@@ -1,0 +1,189 @@
+ITWB Demo Script
+================
+
+Basic RHEL Atomic
+=================
+
+  cat /etc/redhat-release
+
+  uname -a
+
+  export PS1="\u@\h \w> "
+
+  docker info
+
+  atomic host status
+
+
+  df -kh
+
+  lvs
+
+  vgdisplay
+  lvdisplay
+
+  docker images
+
+  cd docker-images
+  ls
+
+Demo 1: Polyglot Microservices on RHEL Atomic
+==============================================
+
+FIRST, Let's see the source code of our small nodejs app
+
+  docker run -d --name=mysql_database -p 3306:3306 itwb/mysql
+
+  docker logs mysql_database
+
+Wait for 10-15 seconds while DB comes up.....
+
+Now from Fedora VM Host - check the DB
+=======================================
+
+  mysql -u itwb -p --host=192.168.124.50
+
+  use userdb;
+
+  select * from t_user;
+
+Back to Atomic Host
+====================
+
+  docker run --name=node-app1  --link mysql_database:mysql-service -d itwb/node-app
+  docker run --name=node-app2  --link mysql_database:mysql-service -d itwb/node-app
+
+  docker ps
+  docker logs node-app1
+  docker logs node-app2
+
+
+Let's see if the node app can be accessed locally:
+===================================================
+
+  docker inspect node-app1 | grep IP
+  curl -i http://<IP of node container 1/2>:3000/info
+
+Now let's start up our Apache which acts as a load balancer/proxy
+=================================================================
+
+  docker run --name=httpd  -p 80:80 --link node-app1:node-app1 --link node-app2:node-app2 -d itwb/httpd
+
+Is our apache up?
+
+  docker logs httpd
+
+  curl -i http://localhost/info
+  curl -i http://localhost/api/user
+
+Finally, the full app from browser
+
+  http://192.168.124.50/info
+  http://192.168.124.50/api/user
+
+  docker logs node-app1
+  docker logs node-app2
+
+Now, let's fire up our swarm app
+
+Let's take a brief look at our swarm app's source code....
+
+  docker run --name=swarm-app  --link mysql_database:mysql-service  -p 8080:8080 -d itwb/swarm-app
+
+  Wait for 10-15 secs for startup
+
+  docker logs swarm-app
+
+Check locally
+
+  curl -i http://localhost:8080/reports
+  curl -i http://localhost:8080/reports/1
+
+From browser
+
+  http://192.168.124.50:8080/reports
+  http://192.168.124.50:8080/reports/1
+
+
+
+Cockpit UI Demo
+===============
+
+  atomic run rhel7/cockpit-ws
+
+  docker ps
+
+  http://atomic1:9090 (Login as root/redhat)
+
+Get Rid of all exited containers before next demo
+=================================================
+
+Stop all containers for this demo
+
+  docker stop node-app1 node-app2 httpd swarm-app mysql_database
+
+
+----------- END OF DEMO 1----------------------
+
+
+Demo 2: Data Grid Map-Reduce Demo for Parallel CDR Processing
+==============================================================
+
+Demo slide deck
+
+Start the master container first
+
+ docker run --name=jdg-master -p 9000:8080 -d itwb/jdg-master
+
+Now, start the slaves
+
+ docker run --name=jdg-slave1 -d itwb/jdg-slave
+ docker run --name=jdg-slave2 -d itwb/jdg-slave
+
+
+Watch the logs on master and notice slaves are auto-detected and form a cluster
+
+ docker logs jdg-master
+ docker logs jdg-slave1
+ docker logs jdg-slave2
+
+Pull up the UI on Master
+
+http://192.168.124.50:9000/JDG_MR_WEB/
+
+Upload the 10,000 CDR records file
+
+Click Billing & Statistics
+
+Observe how load splits amongst cluster
+
+ docker logs jdg-master
+ docker logs jdg-slave1
+ docker logs jdg-slave2
+
+Add one more slave
+
+ docker run --name=jdg-slave3 -d itwb/jdg-slave
+
+Observe how cluster auto-detects new slave
+
+ docker logs jdg-master
+
+Refresh the cluster list in UI and observe new slave node
+
+Re-run the file upload
+
+Stop all the nodes
+
+ docker stop jdg-master jdg-slave1 jdg-slave2 jdg-slave3
+
+ docker rm -v $(docker ps -a -q -f status=exited)
+
+
+----------- END OF DEMO 2----------------------
+
+Microservices Ref Arch
+
+
+
+

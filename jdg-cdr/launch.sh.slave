@@ -1,0 +1,3 @@
+#!/bin/bash
+
+/opt/slave-node/jboss-eap-6.4/bin/standalone.sh  -Djboss.bind.address.management=$(hostname) -Djboss.bind.address=$(hostname) -Djboss.node.name=$(hostname) -Djgroups.bind_addr=$(hostname)

@@ -1,0 +1,13 @@
+echo "Installing features..."
+
+features:install camel-http4
+
+# Put all features and wraps here....
+
+echo "All dependent features installed!"
+
+echo "Deploying GSTN Routes..."
+
+echo "Here is the installed list of OSGI bundles.."
+
+osgi:list
